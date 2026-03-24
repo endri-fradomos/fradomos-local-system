@@ -14,12 +14,11 @@ curl -fsSL https://raw.githubusercontent.com/endri-fradomos/fradomos-local-syste
 
 > **Requirements:** Debian 11+ or Ubuntu 20.04+ — must be run as `root`
 
-The installer automatically detects your CPU architecture and downloads the correct package.
+A single package works on all supported architectures.
 
 | Architecture | Supported Devices | Direct Download |
 |---|---|---|
-| `x86_64` (amd64) | Standard Linux servers, VPS, desktops | [fradomos_1.0.0_amd64.deb](https://fradomos.al/deb/fradomos_1.0.0_amd64.deb) |
-| `aarch64` (arm64) | Raspberry Pi 3, 4, 5 (64-bit OS) | [fradomos_1.0.0_arm64.deb](https://fradomos.al/deb/fradomos_1.0.0_arm64.deb) |
+| `x86_64` / `aarch64` | Linux servers, VPS, Raspberry Pi 3/4/5 (64-bit OS) | [fradomos_1.0.0_all.deb](https://fradomos.al/deb/fradomos_1.0.0_all.deb) |
 
 The installer will interactively ask you to set:
 - House name, login username & password
@@ -43,27 +42,6 @@ The installer automatically downloads and configures the following:
 
 ---
 
-## Database
-
-A MariaDB database named `Fradomos` is created with the following tables:
-
-- `hause` — house / system registration
-- `users` — registered users
-- `external_users` — external/guest users
-- `rooms` — rooms in the house
-- `devices` — smart devices
-- `room_info` — room metadata
-- `routines` — automation routines
-- `routines_functions` — routine actions
-- `sensor_device_actions` — sensor trigger rules
-- `activity_logs` — event and activity history
-- `notifications` — push notifications
-- `external_user_devices` — device access for external users
-- `user_room` — user-to-room assignments
-- `api_keys` — API key management
-
----
-
 ## Login
 
 After installation, open your browser and go to:
@@ -80,16 +58,10 @@ Use the **house username and password** you entered during installation.
 
 ## Updating
 
-When a new version is released, update with the correct package for your architecture:
+When a new version is released, update with:
 
-**x86_64 servers:**
 ```bash
-curl -fsSL https://fradomos.al/deb/fradomos_1.0.0_amd64.deb -o /tmp/fradomos.deb && apt install -y /tmp/fradomos.deb && rm /tmp/fradomos.deb
-```
-
-**Raspberry Pi (arm64):**
-```bash
-curl -fsSL https://fradomos.al/deb/fradomos_1.0.0_arm64.deb -o /tmp/fradomos.deb && apt install -y /tmp/fradomos.deb && rm /tmp/fradomos.deb
+curl -fsSL https://fradomos.al/deb/fradomos_1.0.0_all.deb -o /tmp/fradomos.deb && apt install -y /tmp/fradomos.deb && rm /tmp/fradomos.deb
 ```
 
 > Your database and existing data are preserved during updates. Only the app files are replaced.
@@ -123,19 +95,6 @@ systemctl restart nginx mosquitto
 | Node.js API | `3001` | Internal — proxied via Nginx |
 | MariaDB | `3306` | Database (local only) |
 | Mosquitto MQTT | `1883` | Device communication |
-
----
-
-## File Locations
-
-| Path | Description |
-|------|-------------|
-| `/opt/fradomos/app/` | API binary & runtime files |
-| `/opt/fradomos/app/.env` | Environment config (credentials) |
-| `/opt/fradomos/app/public/` | Built React web UI |
-| `/etc/nginx/sites-available/fradomos` | Nginx site config |
-| `/etc/mosquitto/conf.d/fradomos.conf` | Mosquitto config |
-| `/etc/mosquitto/fradomos.passwd` | Mosquitto password file |
 
 ---
 
