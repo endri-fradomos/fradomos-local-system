@@ -71,16 +71,17 @@ prompt_required() {
     local input
     while true; do
         if [ -n "$default" ]; then
-            IFS= read -r -p "  ${label} [${default}]: " input </dev/tty
+            echo -ne "  ${BOLD}${label}${RESET} ${CYAN}[${default}]${RESET}: " >/dev/tty
         else
-            IFS= read -r -p "  ${label}: " input </dev/tty
+            echo -ne "  ${BOLD}${label}${RESET}: " >/dev/tty
         fi
+        IFS= read -r input </dev/tty
         input="${input:-$default}"
         if [ -n "$input" ]; then
             eval "$var_name=\"\$input\""
             break
         else
-            echo -e "  ${RED}  This field is required.${RESET}"
+            echo -e "  ${RED}  This field is required.${RESET}" >/dev/tty
         fi
     done
 }
@@ -90,19 +91,21 @@ prompt_password() {
     local var_name="$2"
     local input input2
     while true; do
-        IFS= read -rs -p "  ${label}: " input </dev/tty
-        echo ""
+        echo -ne "  ${BOLD}${label}${RESET}: " >/dev/tty
+        IFS= read -rs input </dev/tty
+        echo "" >/dev/tty
         if [ -z "$input" ]; then
-            echo -e "  ${RED}  Password cannot be empty.${RESET}"
+            echo -e "  ${RED}  Password cannot be empty.${RESET}" >/dev/tty
             continue
         fi
-        IFS= read -rs -p "  Confirm ${label}: " input2 </dev/tty
-        echo ""
+        echo -ne "  ${BOLD}Confirm ${label}${RESET}: " >/dev/tty
+        IFS= read -rs input2 </dev/tty
+        echo "" >/dev/tty
         if [ "$input" = "$input2" ]; then
             eval "$var_name=\"\$input\""
             break
         else
-            echo -e "  ${RED}  Passwords do not match. Try again.${RESET}"
+            echo -e "  ${RED}  Passwords do not match. Try again.${RESET}" >/dev/tty
         fi
     done
 }
@@ -130,7 +133,7 @@ echo -e "     House username  : ${YELLOW}${HOUSE_USERNAME}${RESET}"
 echo -e "     DB username     : ${YELLOW}${DB_USER}${RESET}"
 echo -e "     MQTT username   : ${YELLOW}${MQTT_USERNAME}${RESET}"
 echo ""
-echo -ne "  ${BOLD}Proceed with installation? [Y/n]:${RESET} "
+echo -ne "  ${BOLD}Proceed with installation? [Y/n]:${RESET} " >/dev/tty
 read -r confirm </dev/tty
 confirm="${confirm:-Y}"
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
