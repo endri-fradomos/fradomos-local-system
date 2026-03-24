@@ -27,7 +27,7 @@ echo ""
 echo "  ┌─────────────────────────────────────────────────────────────┐"
 echo "  │  This installer will set up the following components:       │"
 echo "  │                                                             │"
-echo "  │       MariaDB       — Database server                       │"
+echo "  │       MariaDB        — Database server                      │"
 echo "  │       Mosquitto      — MQTT broker                          │"
 echo "  │       Nginx          — Web server & reverse proxy           │"
 echo "  │       Node.js API    — Fradomos backend (PM2 managed)       │"
@@ -47,33 +47,153 @@ if ! command -v apt &>/dev/null; then
     exit 1
 fi
 
+# ── Interactive setup prompts ───────────────────────────────────────────────
+echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
+echo -e "${BOLD}  Setup Configuration${RESET}"
+echo -e "  Answer the questions below. Press ${YELLOW}Enter${RESET} to accept the default."
+echo ""
+
+prompt_required() {
+    local label="$1"
+    local default="$2"
+    local var_name="$3"
+    local input
+    while true; do
+        if [ -n "$default" ]; then
+            echo -ne "  ${BOLD}${label}${RESET} ${CYAN}[${default}]${RESET}: "
+        else
+            echo -ne "  ${BOLD}${label}${RESET}: "
+        fi
+        read -r input
+        input="${input:-$default}"
+        if [ -n "$input" ]; then
+            eval "$var_name=\"$input\""
+            break
+        else
+            echo -e "  ${RED}  This field is required.${RESET}"
+        fi
+    done
+}
+
+prompt_password() {
+    local label="$1"
+    local var_name="$2"
+    local input
+    while true; do
+        echo -ne "  ${BOLD}${label}${RESET} ${CYAN}(hidden)${RESET}: "
+        read -r input
+        echo ""
+        if [ -n "$input" ]; then
+            echo -ne "  ${BOLD}Confirm ${label}${RESET} ${CYAN}(hidden)${RESET}: "
+            read -r input2
+            echo ""
+            if [ "$input" = "$input2" ]; then
+                eval "$var_name=\"$input\""
+                break
+            else
+                echo -e "  ${RED}  Passwords do not match. Try again.${RESET}"
+            fi
+        else
+            echo -e "  ${RED}  Password cannot be empty.${RESET}"
+        fi
+    done
+}
+
+echo -e "  ${YELLOW}  House Settings${RESET}"
+prompt_required "House name"           "My Home"  HOUSE_NAME
+prompt_required "House login username" "admin"    HOUSE_USERNAME
+prompt_password "House login password"            HOUSE_PASSWORD
+echo ""
+echo -e "  ${YELLOW}   Database Settings${RESET}"
+prompt_required "Database username"    "fradomos" DB_USER
+prompt_password "Database password"               DB_PASSWORD
+echo ""
+echo -e "  ${YELLOW}  MQTT Broker Settings${RESET}"
+prompt_required "MQTT username"        "mqttuser" MQTT_USERNAME
+prompt_password "MQTT password"                   MQTT_PASSWORD
+echo ""
+
+# ── Confirm before proceeding ──────────────────────────────────────────────
+echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
+echo -e "  ${BOLD}Configuration Summary${RESET}"
+echo ""
+echo -e "     House name      : ${YELLOW}${HOUSE_NAME}${RESET}"
+echo -e "     House username  : ${YELLOW}${HOUSE_USERNAME}${RESET}"
+echo -e "     DB username     : ${YELLOW}${DB_USER}${RESET}"
+echo -e "     MQTT username   : ${YELLOW}${MQTT_USERNAME}${RESET}"
+echo ""
+echo -ne "  ${BOLD}Proceed with installation? [Y/n]:${RESET} "
+read -r confirm
+confirm="${confirm:-Y}"
+if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo -e "${RED}  Installation cancelled.${RESET}"
+    exit 0
+fi
+echo ""
+
 SERVER_IP=$(hostname -I | awk '{print $1}')
 
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
-echo -e "${BOLD}  [1/4]${RESET} Downloading Fradomos package..."
+echo -e "${BOLD}  [1/5]${RESET} Downloading Fradomos package..."
 curl -fsSL --progress-bar https://fradomos.al/deb/fradomos_1.0.0_all.deb -o /tmp/fradomos.deb
 echo -e "${GREEN}  ✔  Download complete.${RESET}"
 
 echo ""
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
-echo -e "${BOLD}  [2/4]${RESET} Updating package list..."
+echo -e "${BOLD}  [2/5]${RESET} Updating package list..."
 apt update -qq
 echo -e "${GREEN}  ✔  Package list updated.${RESET}"
 
 echo ""
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
-echo -e "${BOLD}  [3/4]${RESET} Installing system dependencies..."
+echo -e "${BOLD}  [3/5]${RESET} Installing system dependencies..."
 apt install -y curl mariadb-server mosquitto mosquitto-clients nginx nodejs npm
 echo -e "${GREEN}  ✔  Dependencies installed.${RESET}"
 
 echo ""
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
-echo -e "${BOLD}  [4/4]${RESET} Installing Fradomos..."
+echo -e "${BOLD}  [4/5]${RESET} Installing Fradomos..."
 apt install -y /tmp/fradomos.deb
 echo -e "${GREEN}  ✔  Fradomos installed.${RESET}"
 
 echo ""
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
+echo -e "${BOLD}  [5/5]${RESET} Applying your custom configuration..."
+
+ENV_FILE="/opt/fradomos/app/.env"
+
+# Patch .env with user-provided credentials
+sed -i "s|^DB_USER=.*|DB_USER=${DB_USER}|"                   "$ENV_FILE"
+sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|"       "$ENV_FILE"
+sed -i "s|^MQTT_USERNAME=.*|MQTT_USERNAME=${MQTT_USERNAME}|" "$ENV_FILE"
+sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=${MQTT_PASSWORD}|" "$ENV_FILE"
+
+# Update MariaDB user password and rename user
+mysql -u root -e "ALTER USER 'fradomos'@'localhost' IDENTIFIED BY '${DB_PASSWORD}'"
+mysql -u root -e "RENAME USER 'fradomos'@'localhost' TO '${DB_USER}'@'localhost'"
+mysql -u root -e "FLUSH PRIVILEGES"
+
+# Update Mosquitto password (suppress ownership warnings)
+MOSQUITTO_PASSWD="/etc/mosquitto/fradomos.passwd"
+mosquitto_passwd -b "$MOSQUITTO_PASSWD" "${MQTT_USERNAME}" "${MQTT_PASSWORD}" 2>/dev/null
+systemctl restart mosquitto 2>/dev/null
+
+# Restart API to pick up new .env
+pm2 restart fradomos-api --update-env --silent
+sleep 3
+
+# Re-register house with custom credentials
+mysql -u root Fradomos -e "DELETE FROM hause;" 2>/dev/null || true
+curl -s -X POST http://localhost:3001/api/auth/house-register \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${HOUSE_NAME}\",\"username\":\"${HOUSE_USERNAME}\",\"password\":\"${HOUSE_PASSWORD}\",\"remote_access\":\"no\",\"unique_id\":null,\"city\":null}" \
+    > /dev/null
+
+pm2 save --silent
+
+echo -e "${GREEN}  ✔  Configuration applied.${RESET}"
+
+echo ""
 echo -e "  Cleaning up temporary files..."
 rm -f /tmp/fradomos.deb
 
@@ -82,13 +202,22 @@ echo -e "${GREEN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════════════════════╗"
 echo "  ║           Fradomos installed successfully!                   ║"
 echo "  ╠══════════════════════════════════════════════════════════════╣"
-printf "║    Web UI  :  http://%-38s║\n" "${SERVER_IP}"
-echo "  ║      API     :  http://${SERVER_IP}/api/health"
+printf "  ║    Web UI  :  http://%-38s║\n" "${SERVER_IP}  "
+printf "  ║    API     :  http://%-38s║\n" "${SERVER_IP}/api/health  "
 echo "  ╠══════════════════════════════════════════════════════════════╣"
-echo "  ║      Default login credentials:                              ║"
-echo "  ║      Username  :  fradomos                                   ║"
-echo "  ║      Password  :  root                                       ║"
+echo "  ║      House credentials:                                      ║"
+printf "  ║      Name      :  %-43s║\n" "${HOUSE_NAME}"
+printf "  ║      Username  :  %-43s║\n" "${HOUSE_USERNAME}"
+printf "  ║      Password  :  %-43s║\n" "${HOUSE_PASSWORD}"
 echo "  ╠══════════════════════════════════════════════════════════════╣"
-echo "  ║      Change your password after the first login!             ║"
+echo "  ║       Database:                                              ║"
+printf "  ║      User      :  %-43s║\n" "${DB_USER}"
+printf "  ║      Password  :  %-43s║\n" "${DB_PASSWORD}"
+echo "  ╠══════════════════════════════════════════════════════════════╣"
+echo "  ║      MQTT Broker:                                            ║"
+printf "  ║      User      :  %-43s║\n" "${MQTT_USERNAME}"
+printf "  ║      Password  :  %-43s║\n" "${MQTT_PASSWORD}"
+echo "  ╠══════════════════════════════════════════════════════════════╣"
+echo "  ║         Keep your credentials safe!  Notice them!!!!         ║"
 echo "  ╚══════════════════════════════════════════════════════════════╝"
 echo -e "${RESET}"
