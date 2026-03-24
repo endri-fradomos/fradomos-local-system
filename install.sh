@@ -71,14 +71,13 @@ prompt_required() {
     local input
     while true; do
         if [ -n "$default" ]; then
-            echo -ne "  ${BOLD}${label}${RESET} ${CYAN}[${default}]${RESET}: "
+            IFS= read -r -p "  ${label} [${default}]: " input </dev/tty
         else
-            echo -ne "  ${BOLD}${label}${RESET}: "
+            IFS= read -r -p "  ${label}: " input </dev/tty
         fi
-        read -r input
         input="${input:-$default}"
         if [ -n "$input" ]; then
-            eval "$var_name=\"$input\""
+            eval "$var_name=\"\$input\""
             break
         else
             echo -e "  ${RED}  This field is required.${RESET}"
@@ -91,19 +90,13 @@ prompt_password() {
     local var_name="$2"
     local input input2
     while true; do
-        echo -ne "  ${BOLD}${label}${RESET}: "
-        stty -echo 2>/dev/null || true
-        IFS= read -r input
-        stty echo 2>/dev/null || true
+        IFS= read -rs -p "  ${label}: " input </dev/tty
         echo ""
         if [ -z "$input" ]; then
             echo -e "  ${RED}  Password cannot be empty.${RESET}"
             continue
         fi
-        echo -ne "  ${BOLD}Confirm ${label}${RESET}: "
-        stty -echo 2>/dev/null || true
-        IFS= read -r input2
-        stty echo 2>/dev/null || true
+        IFS= read -rs -p "  Confirm ${label}: " input2 </dev/tty
         echo ""
         if [ "$input" = "$input2" ]; then
             eval "$var_name=\"\$input\""
@@ -138,7 +131,7 @@ echo -e "     DB username     : ${YELLOW}${DB_USER}${RESET}"
 echo -e "     MQTT username   : ${YELLOW}${MQTT_USERNAME}${RESET}"
 echo ""
 echo -ne "  ${BOLD}Proceed with installation? [Y/n]:${RESET} "
-read -r confirm
+read -r confirm </dev/tty
 confirm="${confirm:-Y}"
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo -e "${RED}  Installation cancelled.${RESET}"
