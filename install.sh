@@ -78,23 +78,27 @@ prompt_required() {
 prompt_password() {
     local label="$1"
     local var_name="$2"
-    local input
+    local input input2
     while true; do
-        echo -ne "  ${BOLD}${label}${RESET} ${CYAN}(hidden)${RESET}: "
-        read -r input
+        echo -ne "  ${BOLD}${label}${RESET}: "
+        stty -echo 2>/dev/null || true
+        IFS= read -r input
+        stty echo 2>/dev/null || true
         echo ""
-        if [ -n "$input" ]; then
-            echo -ne "  ${BOLD}Confirm ${label}${RESET} ${CYAN}(hidden)${RESET}: "
-            read -r input2
-            echo ""
-            if [ "$input" = "$input2" ]; then
-                eval "$var_name=\"$input\""
-                break
-            else
-                echo -e "  ${RED}  Passwords do not match. Try again.${RESET}"
-            fi
-        else
+        if [ -z "$input" ]; then
             echo -e "  ${RED}  Password cannot be empty.${RESET}"
+            continue
+        fi
+        echo -ne "  ${BOLD}Confirm ${label}${RESET}: "
+        stty -echo 2>/dev/null || true
+        IFS= read -r input2
+        stty echo 2>/dev/null || true
+        echo ""
+        if [ "$input" = "$input2" ]; then
+            eval "$var_name=\"\$input\""
+            break
+        else
+            echo -e "  ${RED}  Passwords do not match. Try again.${RESET}"
         fi
     done
 }
@@ -173,9 +177,13 @@ mysql -u root -e "ALTER USER 'fradomos'@'localhost' IDENTIFIED BY '${DB_PASSWORD
 mysql -u root -e "RENAME USER 'fradomos'@'localhost' TO '${DB_USER}'@'localhost'"
 mysql -u root -e "FLUSH PRIVILEGES"
 
-# Update Mosquitto password (suppress ownership warnings)
+# Update Mosquitto password
 MOSQUITTO_PASSWD="/etc/mosquitto/fradomos.passwd"
+# Temporarily allow root to write, then restore ownership
+chmod 600 "$MOSQUITTO_PASSWD"
 mosquitto_passwd -b "$MOSQUITTO_PASSWD" "${MQTT_USERNAME}" "${MQTT_PASSWORD}" 2>/dev/null
+chown mosquitto:mosquitto "$MOSQUITTO_PASSWD"
+chmod 600 "$MOSQUITTO_PASSWD"
 systemctl restart mosquitto 2>/dev/null
 
 # Restart API to pick up new .env
@@ -202,8 +210,8 @@ echo -e "${GREEN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════════════════════╗"
 echo "  ║           Fradomos installed successfully!                   ║"
 echo "  ╠══════════════════════════════════════════════════════════════╣"
-printf "  ║    Web UI  :  http://%-38s║\n" "${SERVER_IP}  "
-printf "  ║    API     :  http://%-38s║\n" "${SERVER_IP}/api/health  "
+printf "  ║    Web UI  :  http://%-38s║\n" "${SERVER_IP}  "  
+printf "  ║    API     :  http://%-38s║\n" "${SERVER_IP}/api/health  "  
 echo "  ╠══════════════════════════════════════════════════════════════╣"
 echo "  ║      House credentials:                                      ║"
 printf "  ║      Name      :  %-43s║\n" "${HOUSE_NAME}"
