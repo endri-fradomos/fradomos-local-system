@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+# ── Self-re-exec when piped from curl ──────────────────────────────────────
+# When run via `curl ... | bash`, stdin is the pipe (not a terminal).
+# We detect this and re-download the script to a temp file, then exec it
+# properly so that `read` prompts work correctly.
+if [ ! -t 0 ]; then
+    SELF=$(mktemp /tmp/fradomos-install-XXXXXX.sh)
+    curl -fsSL https://raw.githubusercontent.com/endri-fradomos/fradomos-local-system/main/install.sh -o "$SELF"
+    chmod +x "$SELF"
+    exec bash "$SELF"
+fi
+
 # ── Colours ────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
