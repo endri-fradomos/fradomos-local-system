@@ -209,7 +209,15 @@ systemctl restart mosquitto 2>/dev/null
 
 # Restart API to pick up new .env
 pm2 restart fradomos-api --update-env --silent
-sleep 3
+
+# Wait for API to be ready (Pi can be slow)
+echo -e "  Waiting for API..."
+for i in $(seq 1 30); do
+    if curl -s http://localhost:3001/api/health > /dev/null 2>&1; then
+        break
+    fi
+    sleep 2
+done
 
 # Re-register house with custom credentials
 mysql -u root Fradomos -e "DELETE FROM hause;" 2>/dev/null || true
