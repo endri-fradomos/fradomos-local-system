@@ -76,6 +76,8 @@ prompt_required() {
         fi
         IFS= read -r input
         input="${input:-$default}"
+        input="${input#"${input%%[![:space:]]*}"}"  # trim leading
+        input="${input%"${input##*[![:space:]]}"}"  # trim trailing
         if [ -n "$input" ]; then
             eval "$var_name=\"\$input\""
             break
@@ -191,13 +193,11 @@ sed -i "s|^MQTT_USERNAME=.*|MQTT_USERNAME=${MQTT_USERNAME}|" "$ENV_FILE"
 sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=${MQTT_PASSWORD}|" "$ENV_FILE"
 
 # Update MariaDB — drop the default user, create the custom one fresh
-mysql -u root <<SQL
-DROP USER IF EXISTS 'fradomos'@'localhost';
-DROP USER IF EXISTS '${DB_USER}'@'localhost';
-CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
-GRANT ALL PRIVILEGES ON \`Fradomos\`.* TO '${DB_USER}'@'localhost';
-FLUSH PRIVILEGES;
-SQL
+mysql -u root -e "DROP USER IF EXISTS 'fradomos'@'localhost';"
+mysql -u root -e "DROP USER IF EXISTS '${DB_USER}'@'localhost';"
+mysql -u root -e "CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';"
+mysql -u root -e "GRANT ALL PRIVILEGES ON \`Fradomos\`.* TO '${DB_USER}'@'localhost';"
+mysql -u root -e "FLUSH PRIVILEGES;"
 
 # Update Mosquitto password
 MOSQUITTO_PASSWD="/etc/mosquitto/fradomos.passwd"
