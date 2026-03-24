@@ -3,13 +3,12 @@ set -e
 
 # ── Self-re-exec when piped from curl ──────────────────────────────────────
 # When run via `curl ... | bash`, stdin is the pipe (not a terminal).
-# We detect this and re-download the script to a temp file, then exec it
-# properly so that `read` prompts work correctly.
+# Download the script to a temp file and re-exec with stdin forced to /dev/tty.
 if [ ! -t 0 ]; then
     SELF=$(mktemp /tmp/fradomos-install-XXXXXX.sh)
     curl -fsSL https://raw.githubusercontent.com/endri-fradomos/fradomos-local-system/main/install.sh -o "$SELF"
     chmod +x "$SELF"
-    exec bash "$SELF"
+    exec bash "$SELF" </dev/tty
 fi
 
 # ── Colours ────────────────────────────────────────────────────────────────
@@ -71,17 +70,17 @@ prompt_required() {
     local input
     while true; do
         if [ -n "$default" ]; then
-            echo -ne "  ${BOLD}${label}${RESET} ${CYAN}[${default}]${RESET}: " >/dev/tty
+            echo -ne "  ${BOLD}${label}${RESET} ${CYAN}[${default}]${RESET}: "
         else
-            echo -ne "  ${BOLD}${label}${RESET}: " >/dev/tty
+            echo -ne "  ${BOLD}${label}${RESET}: "
         fi
-        IFS= read -r input </dev/tty
+        IFS= read -r input
         input="${input:-$default}"
         if [ -n "$input" ]; then
             eval "$var_name=\"\$input\""
             break
         else
-            echo -e "  ${RED}  This field is required.${RESET}" >/dev/tty
+            echo -e "  ${RED}  This field is required.${RESET}"
         fi
     done
 }
@@ -91,21 +90,21 @@ prompt_password() {
     local var_name="$2"
     local input input2
     while true; do
-        echo -ne "  ${BOLD}${label}${RESET}: " >/dev/tty
-        IFS= read -rs input </dev/tty
-        echo "" >/dev/tty
+        echo -ne "  ${BOLD}${label}${RESET}: "
+        IFS= read -rs input
+        echo ""
         if [ -z "$input" ]; then
-            echo -e "  ${RED}  Password cannot be empty.${RESET}" >/dev/tty
+            echo -e "  ${RED}  Password cannot be empty.${RESET}"
             continue
         fi
-        echo -ne "  ${BOLD}Confirm ${label}${RESET}: " >/dev/tty
-        IFS= read -rs input2 </dev/tty
-        echo "" >/dev/tty
+        echo -ne "  ${BOLD}Confirm ${label}${RESET}: "
+        IFS= read -rs input2
+        echo ""
         if [ "$input" = "$input2" ]; then
             eval "$var_name=\"\$input\""
             break
         else
-            echo -e "  ${RED}  Passwords do not match. Try again.${RESET}" >/dev/tty
+            echo -e "  ${RED}  Passwords do not match. Try again.${RESET}"
         fi
     done
 }
@@ -133,8 +132,8 @@ echo -e "     House username  : ${YELLOW}${HOUSE_USERNAME}${RESET}"
 echo -e "     DB username     : ${YELLOW}${DB_USER}${RESET}"
 echo -e "     MQTT username   : ${YELLOW}${MQTT_USERNAME}${RESET}"
 echo ""
-echo -ne "  ${BOLD}Proceed with installation? [Y/n]:${RESET} " >/dev/tty
-read -r confirm </dev/tty
+echo -ne "  ${BOLD}Proceed with installation? [Y/n]:${RESET} "
+read -r confirm
 confirm="${confirm:-Y}"
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     echo -e "${RED}  Installation cancelled.${RESET}"
