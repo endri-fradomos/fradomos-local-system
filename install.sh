@@ -146,19 +146,8 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
 echo -e "${BOLD}  [1/5]${RESET} Downloading Fradomos package..."
 
-# Detect architecture and download the matching .deb
-ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ]; then
-    DEB_URL="https://fradomos.al/deb/fradomos_1.0.0_arm64.deb"
-    echo -e "  Detected architecture: arm64 (Raspberry Pi / ARM64)"
-elif [ "$ARCH" = "x86_64" ]; then
-    DEB_URL="https://fradomos.al/deb/fradomos_1.0.0_amd64.deb"
-    echo -e "  Detected architecture: amd64 (x86_64)"
-else
-    echo -e "${RED}  ✖  Unsupported architecture: ${ARCH}${RESET}"
-    echo -e "     Supported: x86_64 (amd64), aarch64 (arm64 / Raspberry Pi 3/4/5)"
-    exit 1
-fi
+DEB_URL="https://fradomos.al/deb/fradomos_1.0.0_all.deb"
+echo -e "  Architecture: $(uname -m)"
 
 curl -fsSL --progress-bar "$DEB_URL" -o /tmp/fradomos.deb
 echo -e "${GREEN}  ✔  Download complete.${RESET}"
@@ -172,6 +161,14 @@ echo -e "${GREEN}  ✔  Package list updated.${RESET}"
 echo ""
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
 echo -e "${BOLD}  [3/5]${RESET} Installing system dependencies..."
+
+# Ensure Node.js 18 is available (Pi OS ships Node 12 by default)
+NODE_VER=$(node --version 2>/dev/null | cut -d'.' -f1 | tr -d 'v' || echo "0")
+if [ "$NODE_VER" -lt 18 ] 2>/dev/null; then
+    echo -e "  Node.js < 18 detected — installing Node.js 18 from NodeSource..."
+    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - > /dev/null 2>&1
+fi
+
 apt install -y curl mariadb-server mosquitto mosquitto-clients nginx nodejs npm
 echo -e "${GREEN}  ✔  Dependencies installed.${RESET}"
 
