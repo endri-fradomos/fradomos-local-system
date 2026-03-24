@@ -14,6 +14,13 @@ curl -fsSL https://raw.githubusercontent.com/endri-fradomos/fradomos-local-syste
 
 > **Requirements:** Debian 11+ or Ubuntu 20.04+ — must be run as `root`
 
+The installer automatically detects your CPU architecture and downloads the correct package.
+
+| Architecture | Supported Devices | Direct Download |
+|---|---|---|
+| `x86_64` (amd64) | Standard Linux servers, VPS, desktops | [fradomos_1.0.0_amd64.deb](https://fradomos.al/deb/fradomos_1.0.0_amd64.deb) |
+| `aarch64` (arm64) | Raspberry Pi 3, 4, 5 (64-bit OS) | [fradomos_1.0.0_arm64.deb](https://fradomos.al/deb/fradomos_1.0.0_arm64.deb) |
+
 The installer will interactively ask you to set:
 - House name, login username & password
 - Database username & password
@@ -73,10 +80,16 @@ Use the **house username and password** you entered during installation.
 
 ## Updating
 
-When a new version is released, update with:
+When a new version is released, update with the correct package for your architecture:
 
+**x86_64 servers:**
 ```bash
-curl -fsSL https://fradomos.al/deb/fradomos_1.0.0_all.deb -o /tmp/fradomos.deb && apt install -y /tmp/fradomos.deb && rm /tmp/fradomos.deb
+curl -fsSL https://fradomos.al/deb/fradomos_1.0.0_amd64.deb -o /tmp/fradomos.deb && apt install -y /tmp/fradomos.deb && rm /tmp/fradomos.deb
+```
+
+**Raspberry Pi (arm64):**
+```bash
+curl -fsSL https://fradomos.al/deb/fradomos_1.0.0_arm64.deb -o /tmp/fradomos.deb && apt install -y /tmp/fradomos.deb && rm /tmp/fradomos.deb
 ```
 
 > Your database and existing data are preserved during updates. Only the app files are replaced.

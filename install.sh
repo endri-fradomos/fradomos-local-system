@@ -145,7 +145,22 @@ SERVER_IP=$(hostname -I | awk '{print $1}')
 
 echo -e "${CYAN}  ──────────────────────────────────────────────────────────────${RESET}"
 echo -e "${BOLD}  [1/5]${RESET} Downloading Fradomos package..."
-curl -fsSL --progress-bar https://fradomos.al/deb/fradomos_1.0.0_all.deb -o /tmp/fradomos.deb
+
+# Detect architecture and download the matching .deb
+ARCH=$(uname -m)
+if [ "$ARCH" = "aarch64" ]; then
+    DEB_URL="https://fradomos.al/deb/fradomos_1.0.0_arm64.deb"
+    echo -e "  Detected architecture: arm64 (Raspberry Pi / ARM64)"
+elif [ "$ARCH" = "x86_64" ]; then
+    DEB_URL="https://fradomos.al/deb/fradomos_1.0.0_amd64.deb"
+    echo -e "  Detected architecture: amd64 (x86_64)"
+else
+    echo -e "${RED}  ✖  Unsupported architecture: ${ARCH}${RESET}"
+    echo -e "     Supported: x86_64 (amd64), aarch64 (arm64 / Raspberry Pi 3/4/5)"
+    exit 1
+fi
+
+curl -fsSL --progress-bar "$DEB_URL" -o /tmp/fradomos.deb
 echo -e "${GREEN}  ✔  Download complete.${RESET}"
 
 echo ""
