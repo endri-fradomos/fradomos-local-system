@@ -190,10 +190,14 @@ sed -i "s|^DB_PASSWORD=.*|DB_PASSWORD=${DB_PASSWORD}|"       "$ENV_FILE"
 sed -i "s|^MQTT_USERNAME=.*|MQTT_USERNAME=${MQTT_USERNAME}|" "$ENV_FILE"
 sed -i "s|^MQTT_PASSWORD=.*|MQTT_PASSWORD=${MQTT_PASSWORD}|" "$ENV_FILE"
 
-# Update MariaDB user password and rename user
-mysql -u root -e "ALTER USER 'fradomos'@'localhost' IDENTIFIED BY '${DB_PASSWORD}'"
-mysql -u root -e "RENAME USER 'fradomos'@'localhost' TO '${DB_USER}'@'localhost'"
-mysql -u root -e "FLUSH PRIVILEGES"
+# Update MariaDB — drop the default user, create the custom one fresh
+mysql -u root <<SQL
+DROP USER IF EXISTS 'fradomos'@'localhost';
+DROP USER IF EXISTS '${DB_USER}'@'localhost';
+CREATE USER '${DB_USER}'@'localhost' IDENTIFIED BY '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON \`${DB_NAME}\`.* TO '${DB_USER}'@'localhost';
+FLUSH PRIVILEGES;
+SQL
 
 # Update Mosquitto password
 MOSQUITTO_PASSWD="/etc/mosquitto/fradomos.passwd"
